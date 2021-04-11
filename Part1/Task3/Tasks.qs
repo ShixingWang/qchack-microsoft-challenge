@@ -1,7 +1,8 @@
 namespace QCHack.Task3 {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Intrinsic;
-
+    open Microsoft.Quantum.Convert;
+    open Microsoft.Quantum.Arrays as Array;
     // Task 3 (5 points). f(x) = 1 if at least two of three input bits are different - hard version
     //
     // Inputs:
@@ -24,7 +25,16 @@ namespace QCHack.Task3 {
     // even though they apply single-qubit gates to separate qubits. Make sure you run the test
     // on your solution to check that it passes before you submit the solution!
     operation Task3_ValidTriangle (inputs : Qubit[], output : Qubit) : Unit is Adj+Ctl {
-        // ...
+        CNOT(inputs[0],inputs[1]);
+        CNOT(inputs[0],inputs[2]);
+        X(inputs[1]);
+        X(inputs[2]);
+        CCNOT(inputs[1],inputs[2],output);
+        X(inputs[1]);
+        X(inputs[2]);
+        CNOT(inputs[0],inputs[1]);
+        CNOT(inputs[0],inputs[2]);
+        X(output);
     }
 }
 

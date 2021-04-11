@@ -1,6 +1,8 @@
 namespace QCHack.Task4 {
     open Microsoft.Quantum.Canon;
     open Microsoft.Quantum.Intrinsic;
+    open Microsoft.Quantum.Logical;
+    open Microsoft.Quantum.Arrays as Arrays;
 
     // Task 4 (12 points). f(x) = 1 if the graph edge coloring is triangle-free
     // 
@@ -37,13 +39,73 @@ namespace QCHack.Task4 {
     // Hint: Remember that you can examine the inputs and the intermediary results of your computations
     //       using Message function for classical values and DumpMachine for quantum states.
     //
+
+    function FindTriangles(edges : (Int, Int)[]): (Int,Int,Int)[] {
+        let numEdges = Length(edges);
+        mutable indicesEdges = Arrays.EmptyArray<(Int,Int,Int)>(); 
+        if (numEdges>=3) {
+            mutable points = [-1,-1,-1,-1,-1,-1];
+            for i in 0..numEdges-3 {
+                let (e0,e1) = edges[i];
+                set points w/=0..1 <- [e0,e1];
+                for j in i+1..numEdges-2 {
+                    let (e2,e3) = edges[j];
+                    set points w/=2..3 <- [e2,e3];
+                    for k in j+1..numEdges-1 {
+                        let (e4,e5) = edges[k];
+                        set points w/=4..5 <- [e4,e5];
+
+                        let uniquePoints = Arrays.Unique(EqualI,Arrays.Sorted(LessThanI,points));
+                        if Length(uniquePoints)==3 {
+                            set indicesEdges = indicesEdges + [(i,j,k)];  
+                        }
+                    }
+                }
+            }
+        }
+        return indicesEdges;
+    }
+
+    operation Task3_ValidTriangle (inputs : Qubit[], output : Qubit) : Unit is Adj+Ctl {
+        // Inputs:
+        //      1) a 3-qubit array "inputs",
+        //      2) a qubit "output".
+        // Goal: Implement a marking oracle for function f(x) = 1 if at least two of the three bits of x are different.
+        CNOT(inputs[0],inputs[1]);
+        CNOT(inputs[0],inputs[2]);
+        X(inputs[1]);
+        X(inputs[2]);
+        CCNOT(inputs[1],inputs[2],output);
+        X(inputs[1]);
+        X(inputs[2]);
+        CNOT(inputs[0],inputs[1]);
+        CNOT(inputs[0],inputs[2]);
+        X(output);
+    }
+
     operation Task4_TriangleFreeColoringOracle (
         V : Int, 
         edges : (Int, Int)[], 
         colorsRegister : Qubit[], 
         target : Qubit
     ) : Unit is Adj+Ctl {
-        // ...
+        let indices = FindTriangles(edges);
+        if Length(indices)==0 {
+            X(target);
+        }
+        else {
+            use qubitsTriangle = Qubit[Length(indices)];
+            for idx in 0..Length(indices)-1 {
+                let (a1,a2,a3) = indices[idx];
+                Task3_ValidTriangle(Arrays.Subarray([a1,a2,a3],colorsRegister),qubitsTriangle[idx]);
+            }
+            let boolArray = Arrays.ConstantArray(Length(indices),true);
+            let CheckTriangleFree = ControlledOnBitString(boolArray,X);
+            CheckTriangleFree(qubitsTriangle,target);
+            for idx in 0..Length(indices)-1 {
+                let (a1,a2,a3) = indices[idx];
+                Task3_ValidTriangle(Arrays.Subarray([a1,a2,a3],colorsRegister),qubitsTriangle[idx]);
+            }
+        }
     }
 }
-
